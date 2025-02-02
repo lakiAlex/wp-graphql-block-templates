@@ -95,7 +95,7 @@ if ( ! class_exists( 'WPGraphQLBlockTemplates' ) ) {
 						),
 					),
 					'resolve'       => function ( $source, $args, $context, $info ) {
-                        // phpcs:disable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+					// phpcs:disable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 						$template = ! empty( $info->fieldDefinition->config['template_id'] ) ? $info->fieldDefinition->config['template_id'] : null;
 						$type     = ! empty( $info->fieldDefinition->config['template_type'] ) ? $info->fieldDefinition->config['template_type'] : 'wp_template';
 
@@ -125,16 +125,23 @@ if ( ! class_exists( 'WPGraphQLBlockTemplates' ) ) {
 
 			if ( ! empty( $site_template->content ) ) {
 				$site_template->content = parse_blocks( $site_template->content );
+				$processed_blocks       = array();
 
 				foreach ( (array) $site_template->content as $key => $block ) {
-					if ( null === $block['blockName'] ) {
-						unset( $site_template->content[ $key ] ); // Remove empty block.
-					} elseif ( ( empty( $args['showHeader'] ) || false === $args['showHeader'] ) && 'core/template-part' === $block['blockName'] && 'header' === $block['attrs']['slug'] ) {
-						unset( $site_template->content[ $key ] ); // Remove the header template part.
-					} elseif ( ( empty( $args['showFooter'] ) || false === $args['showFooter'] ) && 'core/template-part' === $block['blockName'] && 'footer' === $block['attrs']['slug'] ) {
-						unset( $site_template->content[ $key ] ); // Remove the footer template part.
+					if ( null === $block['blockName'] ||
+					( ( empty( $args['showHeader'] ) || false === $args['showHeader'] ) && 'core/template-part' === $block['blockName'] && 'header' === $block['attrs']['slug'] ) ||
+					( ( empty( $args['showFooter'] ) || false === $args['showFooter'] ) && 'core/template-part' === $block['blockName'] && 'footer' === $block['attrs']['slug'] ) ) {
+						continue;
+					}
+
+					if ( class_exists( 'NextGraphQL\Fields\Block' ) ) {
+						$processed_blocks[] = new NextGraphQL\Fields\Block( $block, 1, $site_template->content, array(), '', '' );
+					} else {
+						$processed_blocks[] = $block;
 					}
 				}
+
+				$site_template->content = $processed_blocks;
 			}
 
 			return apply_filters( 'wpgraphql_site_editor_templates_resolve', $site_template, $template, $type );

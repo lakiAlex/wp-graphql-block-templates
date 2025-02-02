@@ -82,12 +82,24 @@ if ( ! class_exists( 'WPGraphQLBlockTemplates' ) ) {
 					'description'   => __( 'Returns site editor templates as JSON blocks', 'wp-graphql-block-templates' ),
 					'template_id'   => $block_template->id,
 					'template_type' => $block_template->type,
+					'args'          => array(
+						'showHeader' => array(
+							'type'         => 'Boolean',
+							'defaultValue' => false,
+							'description'  => 'Return the header template part or not if its part of the template',
+						),
+						'showFooter' => array(
+							'type'         => 'Boolean',
+							'defaultValue' => false,
+							'description'  => 'Return the footer template part or not if its part of the template',
+						),
+					),
 					'resolve'       => function ( $source, $args, $context, $info ) {
                         // phpcs:disable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 						$template = ! empty( $info->fieldDefinition->config['template_id'] ) ? $info->fieldDefinition->config['template_id'] : null;
 						$type     = ! empty( $info->fieldDefinition->config['template_type'] ) ? $info->fieldDefinition->config['template_type'] : 'wp_template';
 
-						return wp_json_encode( $this->get_site_editor_templates( $template, apply_filters( 'wpgraphql_site_editor_templates_type', $type ) ) );
+						return wp_json_encode( $this->get_site_editor_templates( $template, apply_filters( 'wpgraphql_site_editor_templates_type', $type ), $args ) );
 					},
 				);
 			}
@@ -100,10 +112,11 @@ if ( ! class_exists( 'WPGraphQLBlockTemplates' ) ) {
 		 *
 		 * @param string $template Template key.
 		 * @param string $type Template type.
+		 * @param array  $args Field arguments.
 		 *
 		 * @return string
 		 */
-		public function get_site_editor_templates( $template, $type ) {
+		public function get_site_editor_templates( $template, $type, $args = array() ) {
 			if ( ! $template ) {
 				return;
 			}
@@ -112,6 +125,16 @@ if ( ! class_exists( 'WPGraphQLBlockTemplates' ) ) {
 
 			if ( ! empty( $site_template->content ) ) {
 				$site_template->content = parse_blocks( $site_template->content );
+
+				foreach ( (array) $site_template->content as $key => $block ) {
+					if ( null === $block['blockName'] ) {
+						unset( $site_template->content[ $key ] ); // Remove empty block.
+					} elseif ( ( empty( $args['showHeader'] ) || false === $args['showHeader'] ) && 'core/template-part' === $block['blockName'] && 'header' === $block['attrs']['slug'] ) {
+						unset( $site_template->content[ $key ] ); // Remove the header template part.
+					} elseif ( ( empty( $args['showFooter'] ) || false === $args['showFooter'] ) && 'core/template-part' === $block['blockName'] && 'footer' === $block['attrs']['slug'] ) {
+						unset( $site_template->content[ $key ] ); // Remove the footer template part.
+					}
+				}
 			}
 
 			return apply_filters( 'wpgraphql_site_editor_templates_resolve', $site_template, $template, $type );

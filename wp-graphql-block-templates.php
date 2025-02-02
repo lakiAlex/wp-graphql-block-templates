@@ -136,9 +136,9 @@ if ( ! class_exists( 'WPGraphQLBlockTemplates' ) ) {
 		public function register_graphql_field() {
 			register_graphql_field(
 				'RootQuery',
-				'siteEditorTemplates',
+				'blockTemplates',
 				array(
-					'type'        => 'siteEditorTemplatesList',
+					'type'        => 'blockTemplatesList',
 					'description' => __( 'Returns site editor templates as JSON blocks', 'wp-graphql-block-templates' ),
 					'resolve'     => function () {
 						return true;
@@ -147,7 +147,7 @@ if ( ! class_exists( 'WPGraphQLBlockTemplates' ) ) {
 			);
 
 			register_graphql_object_type(
-				'siteEditorTemplatesList',
+				'blockTemplatesList',
 				array(
 					'fields' => $this->get_fields(),
 				),
